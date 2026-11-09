@@ -80,7 +80,7 @@ At each prompt paste the value generated for that specific secret. Open the resu
 
 ## Telegram deployer bot
 
-The repository includes an **optional deployer bot** in [`deployer/`](deployer/). Once configured with **your own Telegram bot token**, it can guide users in English or Persian to a protected HTTPS form and deploy a private MAXIMUS TWP Worker into their Cloudflare account.
+The repository includes an **optional deployer bot** in [`deployer/`](deployer/), intended for [@drfxtwp_bot](https://t.me/drfxtwp_bot) **after secure activation**. Once configured with **your own Telegram bot token**, it can guide users in English or Persian to a protected HTTPS form and deploy a private MAXIMUS TWP Worker into their Cloudflare account.
 
 The user enters their Cloudflare API token **only in the HTTPS form**, never in Telegram chat. The form requests a token restricted to **Workers Scripts: Edit** for **one account**, and the backend does not save it to a database or put it in Telegram messages.
 
