@@ -5,3 +5,9 @@ dist/
 .dev.vars
 *.log
 .DS_Store
+
+# Local generated deployer bundles and authentication files
+deployer/generated/
+deployer/dist/
+.env*
+!.env.example

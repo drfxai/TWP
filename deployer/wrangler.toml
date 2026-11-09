@@ -1,0 +1,12 @@
+name = "maximus-twp-deployer"
+main = "dist/index.mjs"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+# Required secrets (use wrangler secret put --config deployer/wrangler.toml):
+# TELEGRAM_BOT_TOKEN
+# TELEGRAM_WEBHOOK_SECRET
+# SETUP_SIGNING_KEY
+# BOT_OWNER_IDS (comma-separated numeric Telegram user IDs)
+[observability]
+enabled = false

@@ -1,18 +1,25 @@
 {
   "name": "maximus-twp",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "MAXIMUS TWP — independently implemented Telegram WEB proxy relay for Cloudflare Workers",
+  "description": "MAXIMUS TWP \u2014 independently implemented Telegram WEB proxy relay for Cloudflare Workers",
   "scripts": {
-    "test": "node --test test/*.test.mjs",
-    "check": "node --check src/codec.js && node --check src/security.js && node --check src/datacenter.js && node --check src/config.js && node --check src/carrier.js && node --check src/bridge.js && node --check src/dashboard.js && node --check src/worker.js && npm test",
+    "test": "node --test test/*.test.mjs deployer/test/*.test.mjs",
+    "check": "node --check src/codec.js && node --check src/security.js && node --check src/datacenter.js && node --check src/config.js && node --check src/carrier.js && node --check src/bridge.js && node --check src/dashboard.js && node --check src/worker.js && node --check deployer/src/deploy.js && node --check deployer/src/ui.js && node --check deployer/src/index.js && npm test",
     "build": "wrangler deploy --dry-run --outdir=dist",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "link": "node scripts/link.mjs"
+    "link": "node scripts/link.mjs",
+    "build:deployer": "node scripts/build-deployer.mjs",
+    "deploy:deployer": "npm run build:deployer && wrangler deploy --config deployer/wrangler.toml"
   },
-  "engines": {"node": ">=20"},
-  "devDependencies": {"wrangler": "^4.46.0"},
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "wrangler": "^4.46.0",
+    "esbuild": "^0.25.0"
+  },
   "license": "MIT"
 }

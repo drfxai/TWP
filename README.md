@@ -1,78 +1,140 @@
+<div align="center">
+
+<img src="assets/hero.jpg" alt="MAXIMUS TWP — Telegram Web Proxy by DrFXAi" width="100%" />
+
 # MAXIMUS TWP
 
-**DrFXAi · Telegram WEB Proxy transport for Cloudflare Workers**
+**A self-hosted, serverless Telegram WEB Proxy relay for Cloudflare Workers.**
 
-MAXIMUS TWP is an independently implemented, self-hosted Telegram-only proxy built for the MAXIMUS ecosystem. It provides a dark operator dashboard, private one-click connection links, a HMAC-protected WebView bridge and a multiplexed WebSocket-to-Telegram-datacenter relay. **It is not a device-wide VPN and its compatibility with a real Telegram WEB proxy client must be tested before production use.**
+[![CI](https://github.com/drfxai/TWP/actions/workflows/verify.yml/badge.svg)](https://github.com/drfxai/TWP/actions/workflows/verify.yml)
+[![Cloudflare Workers](https://img.shields.io/badge/runtime-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
+[![License MIT](https://img.shields.io/badge/license-MIT-0B6DFF.svg)](LICENSE)
+[![Status preview](https://img.shields.io/badge/status-engineering%20preview-F5A623.svg)](#compatibility--release-status)
 
-## Features
+**English** · [فارسی](README.fa.md)
 
-- Cloudflare Worker deployment with no VPS and no external database.
-- Private operator dashboard; links only after `ADMIN_TOKEN` verification.
-- `tg://webproxy` deep links; optional `BASE_PATH` support.
-- Telegram WEB proxy v1 bridge with HMAC authentication, short-lived bootstrap and session credentials.
-- Binary `OPEN`, `DATA`, `WINDOW`, `CLOSE`, `HELLO`, `WELCOME` frames and per-stream flow control.
-- Direct Telegram datacenter connectivity using Cloudflare TCP sockets and Obfuscated2 translation.
-- Strict backend allowlist, configurable connection limits, no analytics or third-party frontend resources.
-- Reusable profile integration contract for MAXIMUS VPN.
+[Quick start](#quick-start) · [Telegram deployer](#telegram-deployer-bot) · [Architecture](#architecture) · [Security](#security) · [FAQ](#faq)
+
+</div>
+
+---
+
+## About
+
+MAXIMUS TWP is an independent Cloudflare Workers implementation of a Telegram WEB proxy relay. The Worker accepts a signed WebView bridge session, multiplexes binary streams over WebSocket, and forwards eligible MTProto traffic to a constrained allowlist of Telegram datacenter endpoints.
+
+**Important:** This is a **Telegram-only transport**, **not** a general-purpose VPN, SOCKS server, or VLESS service. It is designed for integration with the larger MAXIMUS VPN ecosystem, but using TWP does not route other Android apps through MAXIMUS VPN.
+
+<img src="assets/network.jpg" alt="MAXIMUS TWP — illustrated device-to-cloud-to-Telegram network" width="100%" />
+
+## Key capabilities
+
+| Area | Implementation |
+| --- | --- |
+| Deployment | Cloudflare Worker; no dedicated VPS or SQL database |
+| Telegram entry | `tg://webproxy` and `https://t.me/webproxy` links |
+| Relay | HTTPS bootstrap + authenticated WebSocket carrier |
+| Transport | Stream multiplexing, flow-control frames and TCP DC routing |
+| Access control | Random `PROXY_SECRET`, dedicated `ADMIN_TOKEN`, short-lived HMAC sessions |
+| Administration | Private operator dashboard; secret-backed link generation |
+| Provisioning | Optional, separately deployed Telegram deployer bot with bilingual UI |
+| Internationalization | English-first docs; [Persian guide](README.fa.md) and bilingual bot |
+| Validation | Protocol/service tests, build check and GitHub Actions CI |
 
 ## Quick start
 
-Prerequisites: Node.js 20+, a Cloudflare account and a Telegram client that supports the experimental WEB proxy protocol.
+**Requirements:** a Cloudflare account, Node.js 20+, and a Telegram client build that actually supports the WEB proxy protocol.
 
 ```bash
+git clone https://github.com/drfxai/TWP.git
+cd TWP
 npm install
-npm run check
 npx wrangler login
-npx wrangler secret put PROXY_SECRET
-npx wrangler secret put ADMIN_TOKEN
-npm run deploy
 ```
 
-`PROXY_SECRET` must be 32 hexadecimal characters (16 random bytes); a 34-character value starting with `dd` selects padded MTProto mode. Generate 16 random bytes locally, for example:
+Create a unique proxy secret (32 hex characters):
 
 ```bash
 node -e "console.log(require('node:crypto').randomBytes(16).toString('hex'))"
 ```
 
-Use a separate, strong random secret for `ADMIN_TOKEN` (at least 32 random bytes encoded as text). Do not commit either key to GitHub. The Worker intentionally does not provide a shared public secret.
-
-On your Worker URL, paste the private operator token and click **Generate connection links**. You can also generate deep links offline:
+Create a **different**, high-entropy admin token (64 hex characters):
 
 ```bash
-PROXY_SECRET=<secret> npm run link -- my-worker.my-subdomain.workers.dev
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 ```
 
-In PowerShell, use `$env:PROXY_SECRET = '...'` followed by `npm run link -- hostname`.
-
-`wrangler.toml` can set `BASE_PATH` to an unguessable URL segment. The Worker automatically generates a path-marked secret for the Telegram link.
-
-## Deployment validation
+Install both as **Cloudflare secrets** (not in GitHub or `wrangler.toml`):
 
 ```bash
-npm test
-npm run build
-curl -s https://your-worker.workers.dev/api/health
+npx wrangler secret put PROXY_SECRET
+npx wrangler secret put ADMIN_TOKEN
+npm run deploy
 ```
 
-A healthy dashboard or an HTTP 200 **does not verify a working Telegram proxy**. For real connectivity, use a WEB-capable Telegram client and verify the bridge handshake, a successful WSS carrier, successful Telegram DC TCP dials, and upstream/downstream MTProto traffic.
+At each prompt paste the value generated for that specific secret. Open the resulting `https://<worker>.<subdomain>.workers.dev` URL in a browser, enter the admin token and generate the connection link. On a supported Telegram client, open the `tg://webproxy` link.
 
-## Repository layout
+> **Do not use a hard-coded example key.** Successful deployment or a healthy HTTP endpoint does **not** prove Telegram connectivity. See [the verification checklist](docs/QUICKSTART.md#verify-the-deployment).
 
-| Path | Responsibility |
-| --- | --- |
-| `src/worker.js` | Worker request routing, authenticated endpoints and WSS upgrade |
-| `src/bridge.js` | Origin-restricted WebView carrier |
-| `src/carrier.js` | Multiplexed streams, flow control and socket cleanup |
-| `src/datacenter.js` | MTProto Obfuscated2 client/DC translation |
-| `src/security.js` | HMAC, AES-CTR, stateless tokens, base64 and secrets |
-| `src/dashboard.js` | MAXIMUS operator UI |
-| `test/` | Automated protocol and service-level tests |
-| `docs/` | Architecture and MAXIMUS Android integration notes |
+**Alternative guides:** [Full English setup](docs/QUICKSTART.md) · [آموزش نصب فارسی](docs/QUICKSTART.fa.md) · [Troubleshooting](docs/QUICKSTART.md#troubleshooting).
 
-Full security notes: [ARCHITECTURE.md](docs/ARCHITECTURE.md) · Integration: [MAXIMUS_INTEGRATION.md](docs/MAXIMUS_INTEGRATION.md).
+## Telegram deployer bot
 
-## Release status
+The repository includes an **optional deployer bot** in [`deployer/`](deployer/). Once configured with **your own Telegram bot token**, it can guide users in English or Persian to a protected HTTPS form and deploy a private MAXIMUS TWP Worker into their Cloudflare account.
 
-**v0.1.0 — engineering preview.** Unit validation is included. Production WSS transport, Cloudflare TCP egress and Telegram client compatibility require live integration testing. HTTPS polling, per-stream WebSocket lanes and dynamic multi-region routing are not implemented.
+The user enters their Cloudflare API token **only in the HTTPS form**, never in Telegram chat. The form requests a token restricted to **Workers Scripts: Edit** for **one account**, and the backend does not save it to a database or put it in Telegram messages.
 
-Copyright © 2026 DrFXAi. Licensed under [MIT](LICENSE).
+The bot is **not live until you deploy it and register its Telegram webhook**. It is *not* the publicly accessible bot shown in third-party screenshots. See [Deployer setup and security](docs/BOT_DEPLOYER.md).
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[Telegram client with WEB proxy support] -->|HTTPS bridge / HMAC| B[Cloudflare Worker]
+    A -->|Authenticated WSS carrier| B
+    B -->|TCP :443 / Obfuscated2| C[Allowlisted Telegram datacenters]
+    D[Private operator dashboard] -->|Admin token| B
+    E[Optional Telegram deployer] -->|Provisioning API| F[User's Cloudflare account]
+    F -.-> B
+```
+
+- [`src/worker.js`](src/worker.js): HTTP routes, bootstrap/session authorization and WebSocket upgrade.
+- [`src/carrier.js`](src/carrier.js): stream lifecycle, multiplexing and flow control.
+- [`src/datacenter.js`](src/datacenter.js): allowlisted Telegram DC connectivity and MTProto Obfuscated2 handling.
+- [`src/security.js`](src/security.js): cryptography and stateless authentication.
+- [`src/dashboard.js`](src/dashboard.js): administrator UI.
+- [`deployer/`](deployer/): optional self-hosted Telegram deployment assistant.
+
+Detailed design: [Architecture](docs/ARCHITECTURE.md) · [MAXIMUS integration](docs/MAXIMUS_INTEGRATION.md).
+
+## Security
+
+- Restrict Cloudflare API tokens to one account and Workers Scripts write access; use short expiration where practical.
+- Never paste Cloudflare or Telegram bot tokens in Telegram conversations, public issues, source control or screenshots.
+- Use separate proxy, admin, webhook and setup-signing secrets. Rotate compromised credentials immediately.
+- A proxy link includes an access secret. Treat it as a credential; revoke by rotating `PROXY_SECRET`.
+- This software does **not** promise anonymity, censorship immunity, a guaranteed speed increase, or compatibility across all Telegram versions.
+
+See [security and threat model](docs/SECURITY.md).
+
+## Compatibility & release status
+
+**Engineering preview · v0.2.0 documentation/deployer milestone.** Automated protocol tests and packaging checks are not a substitute for a live Telegram client test. Actual availability depends on client WEB-proxy support, Cloudflare egress, network conditions and Telegram behavior. No blanket claim of “DPI immune” or “zero latency” is made.
+
+## FAQ
+
+**Is this the same as a VPN?** No. It relays Telegram WEB-proxy traffic only.
+
+**Can I deploy it without a Telegram bot?** Yes. The CLI flow above is the recommended starting point and needs no bot.
+
+**Does this require a paid Cloudflare plan?** Not necessarily for a small proof of concept. Cloudflare platform quotas and availability can change; verify the current plan before production use.
+
+**Why is the deployer separate?** It reduces the attack surface of the proxy Worker and lets operators run the bot only when needed.
+
+**What if the link opens Telegram but no connection is established?** Check WEB-proxy client support, WSS handshake, DC connectivity and runtime logs; refer to the [troubleshooting guide](docs/QUICKSTART.md#troubleshooting).
+
+## Contributing & responsible disclosure
+
+Issues and reproducible test results are welcome. Never post active connection secrets or access tokens. For a suspected vulnerability, contact the maintainers privately rather than publishing credentials or exploit details.
+
+Copyright © 2026 **DrFXAi**. Released under the [MIT License](LICENSE).
