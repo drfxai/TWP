@@ -12,13 +12,13 @@ const same=(a,b)=>{if(!a||!b||a.length!==b.length)return false;let d=0;for(let i
 
 export async function signTicket(payload,key){
   const raw=encode(JSON.stringify(payload));
-  const k=await crypto.subtle.importKey('raw',tss(key),'HMAC',{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const k=await crypto.subtle.importKey('raw',tss(key),{name:'HMAC',hash:'SHA-256'},false,['sign']);
   const mac=await crypto.subtle.sign('HMAC',k,tss(raw));
   return {ticket:raw,sig:btoa(String.fromCharCode(...new Uint8Array(mac))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
 }
 export async function verifyTicket(ticket,sig,key){
   if(!/^[A-Za-z0-9_-]{30,200}$/.test(ticket||'')||!/^[A-Za-z0-9_-]{43}$/.test(sig||''))return null;
-  const k=await crypto.subtle.importKey('raw',tss(key),'HMAC',{name:'HMAC',hash:'SHA-256'},false,['verify']);
+  const k=await crypto.subtle.importKey('raw',tss(key),{name:'HMAC',hash:'SHA-256'},false,['verify']);
   const mac=Uint8Array.from(atob(sig.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-sig.length%4)%4)),c=>c.charCodeAt(0));
   if(!await crypto.subtle.verify('HMAC',k,mac,tss(ticket)))return null;
   let data;try{data=JSON.parse(decode(ticket));}catch{return null;}
@@ -31,7 +31,23 @@ const M={
  fa:{welcome:'MAXIMUS TWP · DrFXAi\n\nساخت وب‌پروکسی خصوصی تلگرام روی Cloudflare Workers و بدون VPS. زبان ربات قابل تغییر است.\n\nابتدا گزینه مورد نظر را انتخاب کنید. پشتیبانی نسخه تلگرام از WEB Proxy باید جداگانه بررسی شود.',deploy:'⚡ نصب TWP',help:'📘 راهنمای نصب',language:'🌐 Language / زبان',security:'🔐 امنیت',guide:'نصب ساده:\n۱. حساب Cloudflare بسازید.\n۲. گزینه نصب TWP را بزنید.\n۳. توکن API محدود به Workers Scripts: Edit و حساب خود بسازید.\n۴. شناسه حساب، زیردامنه و توکن را فقط در فرم HTTPS وارد کنید، نه چت.\n۵. کلید مدیریت را ذخیره و اتصال تلگرام را آزمایش کنید.\n\nhttps://github.com/drfxai/TWP',sec:'توکن را در پیام تلگرام نفرستید. فقط فرم HTTPS؛ توکن Cloudflare محدود و موقت باشد و پس از نصب باطل شود. لینک نصب را برای دیگران نفرستید.',link:'باز کردن فرم امن نصب',blocked:'این ربات فعلاً خصوصی است و فقط ادمین دسترسی دارد.'}
 };
 function menu(lang='en'){const t=M[lang];return {inline_keyboard:[[{text:t.deploy,callback_data:`deploy:${lang}`}],[{text:t.help,callback_data:`help:${lang}`},{text:t.security,callback_data:`security:${lang}`}],[{text:t.language,callback_data:lang==='en'?'lang:fa':'lang:en'}]]};}
-async function telegramApi(env,method,body){const res=await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});if(!res.ok)throw new Error('Telegram bot API failed');}
+async function telegramApi(env,method,body){
+  const res=await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`,{
+    method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)
+  });
+  const data=await res.json().catch(()=>null);
+  if(!res.ok||!data?.ok)throw new Error(`Telegram API ${method} rejected request (HTTP ${res.status})`);
+  return data.result;
+}
+// Keep the secure link usable when Telegram rejects an inline keyboard.
+async function sendWithFallback(env,message){
+  try { return await telegramApi(env,'sendMessage',message); }
+  catch(error){
+    if(!message.reply_markup)throw error;
+    const {reply_markup:unused,...plain}=message;
+    return telegramApi(env,'sendMessage',plain);
+  }
+}
 const owner=(from,env)=>{
   const ids=String(env.BOT_OWNER_IDS||'').split(',').map(s=>s.trim()).filter(Boolean);
   if(ids.length)return ids.includes(String(from.id));
@@ -52,7 +68,10 @@ async function telegramWebhook(req,env){
   // Deployment is an account operation; never expose setup links in group chats.
   const chatType=callback?.message?.chat?.type||update.message?.chat?.type;
   if(chatType!=='private')return new Response('ok',{headers:NO_STORE});
-  if(callback?.id)await telegramApi(env,'answerCallbackQuery',{callback_query_id:callback.id});
+  if(callback?.id){
+    try{await telegramApi(env,'answerCallbackQuery',{callback_query_id:callback.id});}
+    catch{/* Expired query acknowledgement should not block the action. */}
+  }
   const messageText=String(update.message?.text||'').trim();
   // /id works before owner enrollment, so the operator can retrieve their Telegram user ID.
   if(/^\/id(?:@drfxtwp_bot)?$/i.test(messageText)){
@@ -69,23 +88,28 @@ async function telegramWebhook(req,env){
   let action='menu',lang='en';
   if(callback?.data){const [a,l]=callback.data.split(':');if(['deploy','help','security','lang','menu'].includes(a)&&['en','fa'].includes(l)){action=a;lang=l;}}
   // /start intentionally always starts in English; language choice is explicit.
+  if(/^\/deploy(?:@drfxtwp_bot)?$/i.test(messageText))action='deploy';
   if(/^\/help(?:@drfxtwp_bot)?$/i.test(messageText))action='help';
   if(/^\/security(?:@drfxtwp_bot)?$/i.test(messageText))action='security';
   if(/^\/language(?:@drfxtwp_bot)?$/i.test(messageText))action='lang';
   if(!owner(from,env)){
-    await telegramApi(env,'sendMessage',{chat_id:chatId,text:M[lang].blocked});return new Response('ok',{headers:NO_STORE});
+    await sendWithFallback(env,{chat_id:chatId,text:M[lang].blocked+'\nYour Telegram ID: '+from.id+'\nUse /id to enroll an authorized operator.'});
+    return new Response('ok',{headers:NO_STORE});
   }
   const t=M[lang];
   if(action==='lang'||action==='menu'){
-    await telegramApi(env,'sendMessage',{chat_id:chatId,text:t.welcome,reply_markup:menu(lang)});
+    await sendWithFallback(env,{chat_id:chatId,text:t.welcome+'\n\nSend /deploy if the inline button does not respond.',reply_markup:menu(lang)});
   }else if(action==='help'||action==='security'){
-    await telegramApi(env,'sendMessage',{chat_id:chatId,text:action==='help'?t.guide:t.sec,reply_markup:menu(lang)});
+    await sendWithFallback(env,{chat_id:chatId,text:action==='help'?t.guide:t.sec,reply_markup:menu(lang)});
   }else if(action==='deploy'){
     const data=await signTicket({chatId,lang,exp:Math.floor(Date.now()/1000)+600},env.SETUP_SIGNING_KEY);
     const link=new URL('/setup',new URL(req.url).origin);link.searchParams.set('ticket',data.ticket);link.searchParams.set('sig',data.sig);
-    await telegramApi(env,'sendMessage',{chat_id:chatId,text:t.sec,reply_markup:{inline_keyboard:[[{text:t.link,url:link.href}],[{text:t.language,callback_data:lang==='en'?'lang:fa':'lang:en'}]]}});
+    // The URL remains available even if Telegram rejects its inline button.
+    await sendWithFallback(env,{chat_id:chatId,text:t.link+'\n'+link.href+'\n\n'+t.sec,
+      link_preview_options:{is_disabled:true},
+      reply_markup:{inline_keyboard:[[{text:t.link,url:link.href}],[{text:t.language,callback_data:lang==='en'?'lang:fa':'lang:en'}]]}});
   }else{
-    await telegramApi(env,'sendMessage',{chat_id:chatId,text:t.welcome,reply_markup:menu(lang)});
+    await sendWithFallback(env,{chat_id:chatId,text:t.welcome+'\n\nSend /deploy if the inline button does not respond.',reply_markup:menu(lang)});
   }
   return new Response('ok',{headers:NO_STORE});
 }
@@ -138,6 +162,7 @@ async function configureTelegram(env){
     {command:'start',description:'Open the MAXIMUS TWP menu'},
     {command:'id',description:'Display your Telegram user ID'},
     {command:'help',description:'Cloudflare installation guide'},
+    {command:'deploy',description:'Get a secure deployment link'},
     {command:'language',description:'English / فارسی'},
     {command:'security',description:'Token security guidance'}
   ]});
