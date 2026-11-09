@@ -8,7 +8,7 @@ The optional deployer is designed for a Telegram assistant that prepares a per-u
 
 1. Create your own bot in [@BotFather](https://t.me/BotFather) using `/newbot`. Save the bot token privately.
 2. Create or choose a Cloudflare account in which to host the **deployer Worker** (separate from each user’s target account).
-3. Send `/id` to your bot to retrieve your own numeric Telegram user ID, then configure a private owner allowlist (`BOT_OWNER_IDS`) for the first release. Do **not** publish the deployer as an unrestricted service without abuse controls.
+3. Send `/id` to your bot to retrieve your own numeric Telegram user ID, then configure the private owner allowlist (`BOT_OWNER_IDS`). An operator username (`BOT_OWNER_USERNAME`) may be used for initial setup only; it is ignored once numeric IDs are configured. Do **not** publish the deployer as an unrestricted service without abuse controls.
 4. The generated Worker contains the current MAXIMUS TWP core bundled during `npm run build:deployer`. This is a separate Cloudflare Worker from the one running the bot.
 
 ## Deploy the bot
@@ -29,6 +29,9 @@ npm run deploy:deployer
 - `TELEGRAM_WEBHOOK_SECRET`: 32 or more random alphanumeric characters (allowed characters: A-Z, a-z, 0-9, `_`, `-`).
 - `SETUP_SIGNING_KEY`: a separate 64-character random hexadecimal value; used to sign time-limited setup links.
 - `BOT_OWNER_IDS`: your numeric Telegram account ID(s), comma-separated. The deployer refuses unauthorized users by default.
+- `BOT_OWNER_USERNAME`: optional temporary owner username (without `@`). Use only until `BOT_OWNER_IDS` is configured; numeric IDs take precedence.
+- `PUBLIC_BOT_WEBHOOK_URL`: stable HTTPS URL ending in `/telegram` on the deployer Worker.
+- `BOOTSTRAP_WEBHOOK`: set to `1` only during initial scheduled bot profile/Webhook registration, then set to `0` and remove the temporary cron trigger.
 
 **Use a separate secret for every variable.** None belongs in the repository, chat history or public logs.
 
@@ -65,3 +68,15 @@ The browser sends the Cloudflare token directly to the deployer Worker via HTTPS
 ## Credential safety for @drfxtwp_bot
 
 The bot identifier is `@drfxtwp_bot`. **Its previously shared bot token must be revoked in [@BotFather](https://t.me/BotFather) and replaced** before configuring a live webhook. If a user accidentally sends a token-like message to this bot, the bot tries to delete it immediately and warns the user to rotate the credential. Telegram may already have processed the original message, so deletion is not a substitute for rotation.
+
+
+## Live deployment — DrFXAi
+
+The bot service is deployed at `https://maximus-twp-deployer.drfxai.workers.dev`, with its Telegram webhook at `/telegram`.
+
+- Telegram Bot API accepted the bot profile, commands and webhook configuration; a subsequent `getWebhookInfo` request verified the configured webhook URL.
+- Cloudflare's deployed `/health` endpoint returned `configured: true` when checked through Browser Rendering.
+- The temporary activation endpoint and its one-time secret were removed after setup. The bootstrap cron trigger was also removed.
+- The administrative access policy uses a temporary operator username match until the exact numeric user ID is enrolled. Send `/id` privately to the bot, then configure `BOT_OWNER_IDS` in Cloudflare to make the restriction stable.
+- End-to-end Telegram WEB Proxy connectivity must still be tested separately on a compatible client; bot API success does not certify proxy transport support.
+- A previously disclosed bot token was reused at the owner's explicit request. Treat it as compromised; rotate it via BotFather and update the Cloudflare secret as soon as practical.
