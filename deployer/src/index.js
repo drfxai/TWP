@@ -32,7 +32,13 @@ const M={
 };
 function menu(lang='en'){const t=M[lang];return {inline_keyboard:[[{text:t.deploy,callback_data:`deploy:${lang}`}],[{text:t.help,callback_data:`help:${lang}`},{text:t.security,callback_data:`security:${lang}`}],[{text:t.language,callback_data:lang==='en'?'lang:fa':'lang:en'}]]};}
 async function telegramApi(env,method,body){const res=await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});if(!res.ok)throw new Error('Telegram bot API failed');}
-const owner=(id,env)=>String(env.BOT_OWNER_IDS||'').split(',').map(s=>s.trim()).filter(Boolean).includes(String(id));
+const owner=(from,env)=>{
+  const ids=String(env.BOT_OWNER_IDS||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(ids.length)return ids.includes(String(from.id));
+  const username=String(env.BOT_OWNER_USERNAME||'').replace(/^@/,'').toLowerCase();
+  // Username enrollment is temporary: replace with a numeric ID allowlist as soon as possible.
+  return !!username && String(from.username||'').toLowerCase()===username;
+};
 
 async function telegramWebhook(req,env){
   if(!env.TELEGRAM_BOT_TOKEN||!env.TELEGRAM_WEBHOOK_SECRET||!env.SETUP_SIGNING_KEY)return errorResponse('Not configured',503);
@@ -66,7 +72,7 @@ async function telegramWebhook(req,env){
   if(/^\/help(?:@drfxtwp_bot)?$/i.test(messageText))action='help';
   if(/^\/security(?:@drfxtwp_bot)?$/i.test(messageText))action='security';
   if(/^\/language(?:@drfxtwp_bot)?$/i.test(messageText))action='lang';
-  if(!owner(from.id,env)){
+  if(!owner(from,env)){
     await telegramApi(env,'sendMessage',{chat_id:chatId,text:M[lang].blocked});return new Response('ok',{headers:NO_STORE});
   }
   const t=M[lang];
@@ -113,7 +119,39 @@ async function setup(req,url,env){
   }
 }
 
+// Scheduled registration avoids distributing bot credentials to external setup scripts.
+// Remove the temporary cron trigger after Telegram reports a healthy webhook.
+async function configureTelegram(env){
+  if(!env.TELEGRAM_BOT_TOKEN||!env.TELEGRAM_WEBHOOK_SECRET)return;
+  const url=String(env.PUBLIC_BOT_WEBHOOK_URL||'');
+  if(!/^https:\/\/[a-z0-9.-]+\.workers\.dev\/telegram$/.test(url))throw new Error('Invalid public Telegram webhook URL');
+  const invoke=async(method,body)=>{
+    const r=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok||!data.ok)throw new Error('Telegram setup '+method+' failed ('+r.status+')');
+    return data.result;
+  };
+  await invoke('setMyName',{name:'MAXIMUS TWP Deployer'});
+  await invoke('setMyDescription',{description:'Deploy a private Telegram WEB Proxy on Cloudflare Workers. Secure setup, no VPS. Powered by DrFXAi.'});
+  await invoke('setMyShortDescription',{short_description:'Private Telegram WEB Proxy deployment by DrFXAi.'});
+  await invoke('setMyCommands',{commands:[
+    {command:'start',description:'Open the MAXIMUS TWP menu'},
+    {command:'id',description:'Display your Telegram user ID'},
+    {command:'help',description:'Cloudflare installation guide'},
+    {command:'language',description:'English / فارسی'},
+    {command:'security',description:'Token security guidance'}
+  ]});
+  await invoke('setWebhook',{url,secret_token:env.TELEGRAM_WEBHOOK_SECRET,allowed_updates:['message','callback_query'],drop_pending_updates:true});
+  const info=await invoke('getWebhookInfo',{});
+  if(info.url!==url)throw new Error('Telegram webhook URL confirmation mismatch');
+  console.log('MAXIMUS TWP bot configuration confirmed; URL matched:',info.url);
+}
+
 export default {
+  async scheduled(_event,env,ctx){
+    if(env.BOOTSTRAP_WEBHOOK!=='1')return;
+    ctx.waitUntil(configureTelegram(env));
+  },
   async fetch(request,env){
     const url=new URL(request.url);
     if(url.pathname==='/health'&&request.method==='GET')return new Response(JSON.stringify({service:'MAXIMUS TWP Deployer',configured:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET&&env.SETUP_SIGNING_KEY)}),{headers:{...NO_STORE,'content-type':'application/json'}});
