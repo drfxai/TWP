@@ -16,7 +16,7 @@ test('escapes potentially hostile UI fields',()=>{
   assert.equal(escapeHtml('<script>alert(1)</script>'),'&lt;script&gt;alert(1)&lt;/script&gt;');
   const html=setupPage({lang:'en',ticket:'test',sig:'sig'});
   assert.match(html,/Deploy your private Telegram WEB proxy/);
-  assert.doesNotMatch(html,/qorvhex/i);
+  assert.doesNotMatch(html,/external-deployer-brand/i);
 });
 
 test('Persian setup and result pages render',()=>{
