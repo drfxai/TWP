@@ -6,6 +6,7 @@
   "description": "MAXIMUS TWP \u2014 independently implemented Telegram WEB proxy relay for Cloudflare Workers",
   "scripts": {
     "test": "node --test test/*.test.mjs deployer/test/*.test.mjs",
+    "pretest": "node scripts/build-deployer.mjs",
     "check": "node --check src/codec.js && node --check src/security.js && node --check src/datacenter.js && node --check src/config.js && node --check src/carrier.js && node --check src/bridge.js && node --check src/dashboard.js && node --check src/worker.js && node --check deployer/src/deploy.js && node --check deployer/src/ui.js && node --check deployer/src/index.js && npm test",
     "build": "wrangler deploy --dry-run --outdir=dist",
     "dev": "wrangler dev",
