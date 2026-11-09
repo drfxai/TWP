@@ -1,0 +1,13 @@
+name = "maximus-twp"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+# Set production secrets via `npx wrangler secret put PROXY_SECRET` and
+# `npx wrangler secret put ADMIN_TOKEN`. Never commit them to source control.
+[vars]
+MAX_STREAMS = "24"
+# BASE_PATH = "private-proxy-path"
+
+[observability]
+enabled = false
