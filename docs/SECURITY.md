@@ -2,7 +2,7 @@
 
 ## Trust boundaries
 
-1. **Proxy Worker:** holds a per-deployment `PROXY_SECRET` (transport credential) and a separate `ADMIN_TOKEN` (operator UI). Authentication uses short-lived stateless tokens; no per-user D1 or KV is required.
+1. **Proxy Worker:** holds a per-deployment `PROXY_SECRET` (transport credential). The root dashboard (`/`) shows the connection link and QR code to anyone who knows the Worker URL; set `CAMOUFLAGE_URL` to serve a decoy site instead and share links privately. Authentication uses short-lived stateless tokens; no per-user D1 or KV is required.
 2. **Deployer Bot:** holds the **Telegram Bot API token**, a **Telegram webhook secret**, and a **setup-link signing key** as Cloudflare secrets. These are not the same values as a user's proxy credentials.
 3. **User Cloudflare account:** receives a one-time HTTPS API call from the deployer. The user-entered Cloudflare API token is handled in the request only, without database persistence, Telegram echo or analytics. It can still be present in memory during the request and in upstream provider systems. The operator of the deployer must be trusted.
 
@@ -12,7 +12,7 @@
 - Enter the Cloudflare token in the setup HTTPS form, not in Telegram chat.
 - Use a dedicated token with a short expiration and revoke it after provisioning, especially if a third-party deployer is involved.
 - The setup link is time-limited and HMAC-signed but is **not** an OAuth authorization grant. Never forward it.
-- Deployments create unique random proxy/admin tokens; admin values are displayed only on the post-deployment web page. Store them in a password manager, not a GitHub issue.
+- Deployments create a unique random `PROXY_SECRET`; never ship the public example secret. Store generated values in a password manager, not a GitHub issue.
 - Keep the bot private by defining `BOT_OWNER_IDS`, unless a public deployer has been security-reviewed and appropriately rate-limited. Public operation is **not** enabled by default.
 
 ## Threats & limitations

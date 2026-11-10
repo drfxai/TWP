@@ -41,11 +41,12 @@ export async function deployWorker({accountId, subdomain, workerName, apiToken, 
   const adminToken = randomHex(32);
   const metadata = {
     main_module: 'maximus-core.mjs',
-    compatibility_date: '2026-09-01',
+    compatibility_date: '2024-09-23',
+    compatibility_flags: ['nodejs_compat', 'no_websocket_standard_binary_type'],
     bindings: [
       { type: 'secret_text', name: 'PROXY_SECRET', text: proxySecret },
       { type: 'secret_text', name: 'ADMIN_TOKEN', text: adminToken },
-      { type: 'plain_text', name: 'MAX_STREAMS', text: '24' },
+      { type: 'plain_text', name: 'MAX_DIALS', text: '45' },
     ],
   };
   const form = new FormData();
