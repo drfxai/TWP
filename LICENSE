@@ -20,12 +20,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----------------------------------------------------------------------------
-Third-party notices
-
-Portions of worker.js, test/ and docs/ are adapted from software released
-under the MIT License, Copyright (c) 2026 Qorvhex. The MIT permission notice
-above applies to those portions.
-
-worker.js embeds "QR Code Generator for JavaScript",
-Copyright (c) 2009 Kazuhiko Arase, released under the MIT License.
