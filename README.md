@@ -104,7 +104,7 @@ sequenceDiagram
 ساده‌ترین و سریع‌ترین روش برای راه‌اندازی و استقرار خودکار TWP بدون نیاز به کامپیوتر یا دانش فنی، استفاده از ربات تلگرام دیپلویر است:
 
 
-1️⃣ وارد ربات دیپلویر بشید: [@drfxtwp_bot](https://t.me/drfxtwp_bot) و در کانال [@DrFXi](https://t.me/drfxai) عضو شوید.  
+1️⃣ وارد ربات دیپلویر بشید: [@drfxtwp_bot](https://t.me/drfxtwp_bot) و در کانال [@DrFXi](https://t.me/DrFXi) عضو شوید.  
 2️⃣ اول مطمئن شید که یه حساب کاربری توی سایت [dash.cloudflare.com](https://dash.cloudflare.com) دارید.  
 3️⃣ بخش مورد نظر را انتخاب کنید: **⚡ وب‌پروکسی تلگرام (TWP)** یا **🌐 سرور و پنل VLESS**.  
 4️⃣ روی دکمه «🔑 دریافت API Token کلادفلر» کلیک کنید؛ دسترسی‌ها از قبل انتخاب شده‌اند.  
@@ -187,7 +187,7 @@ Telegram's official WEB proxy routes MTProto traffic through an app-owned intern
 
 The easiest and fastest way to deploy TWP in under 1 minute without needing any coding or server setup:
 
-1️⃣ Open the deployer bot: [@drfxtwp_bot](https://t.me/drfxtwp_bot) and join [@DrFXi](https://t.me/drfxai).  
+1️⃣ Open the deployer bot: [@drfxtwp_bot](https://t.me/drfxtwp_bot) and join [@DrFXi](https://t.me/DrFXi).  
 2️⃣ Ensure you have an active account on [dash.cloudflare.com](https://dash.cloudflare.com).  
 3️⃣ Choose a section: **⚡ Telegram WEB proxy (TWP)** or **🌐 VLESS server & panel**.  
 4️⃣ Tap **«🔑 Get Cloudflare API Token»**: the needed permissions are preselected.  

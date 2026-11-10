@@ -34,7 +34,7 @@ test('non-members see the forced-join gate for @DrFXi',async()=>{
     const gate=calls.find(c=>c.method==='sendMessage');
     assert.match(gate.body.text,/عضویت در کانال رسمی الزامی است/);
     assert.match(gate.body.text,/@DrFXi/);
-    assert.equal(gate.body.reply_markup.inline_keyboard[0][0].url,'https://t.me/drfxai');
+    assert.equal(gate.body.reply_markup.inline_keyboard[0][0].url,'https://t.me/DrFXi');
     assert.equal(gate.body.reply_markup.inline_keyboard[1][0].callback_data,'check:main:fa');
   }finally{globalThis.fetch=originalFetch;}
 });

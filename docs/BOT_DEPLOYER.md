@@ -1,6 +1,6 @@
 # MAXIMUS Deployer Bot — operator guide
 
-[Repository](../README.md) · Bot: [@drfxtwp_bot](https://t.me/drfxtwp_bot) · Channel: [@DrFXi](https://t.me/drfxai)
+[Repository](../README.md) · Bot: [@drfxtwp_bot](https://t.me/drfxtwp_bot) · Channel: [@DrFXi](https://t.me/DrFXi)
 
 The deployer is a Cloudflare Worker that runs the Telegram bot. From inside Telegram it installs, on **each user's own Cloudflare account**:
 
