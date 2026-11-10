@@ -15,7 +15,7 @@ id = "8bf3c7f299c64d2f97de7577f04a7ca0"
 [vars]
 PUBLIC_BOT_WEBHOOK_URL = "https://maximus-twp-deployer.drfxai.workers.dev/telegram"
 BOOTSTRAP_WEBHOOK = "0"
-REQUIRED_CHANNEL = "@drfxai"   # the bot must be an administrator of this channel; "-" disables the gate
+REQUIRED_CHANNEL = "@DrFXi"   # the bot must be an administrator of this channel; "-" disables the gate
 # TUTORIAL_URL = "https://t.me/drfxai/123"   # optional post for the "stability & speed" button
 # BOT_OWNER_IDS = "123456789"                # optional: restrict the bot to these Telegram user IDs
 

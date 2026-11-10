@@ -10,7 +10,7 @@
 
 👉 **[ورود مستقیم به ربات دیپلویر: @drfxtwp_bot](https://t.me/drfxtwp_bot)** 👈
 
-1. وارد ربات دیپلویر بشید: [@drfxtwp_bot](https://t.me/drfxtwp_bot) و در کانال [@drfxai](https://t.me/drfxai) عضو شوید.
+1. وارد ربات دیپلویر بشید: [@drfxtwp_bot](https://t.me/drfxtwp_bot) و در کانال [@DrFXi](https://t.me/drfxai) عضو شوید.
 2. اول مطمئن شید که یه حساب کاربری توی سایت [dash.cloudflare.com](https://dash.cloudflare.com) دارید.
 3. بخش مورد نظر را انتخاب کنید: **⚡ وب‌پروکسی تلگرام (TWP)** یا **🌐 سرور و پنل VLESS**.
 4. روی دکمه «🔑 دریافت API Token کلادفلر» کلیک کنید؛ دسترسی‌ها از قبل انتخاب شده‌اند.

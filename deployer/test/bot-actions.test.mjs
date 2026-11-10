@@ -4,7 +4,7 @@ import worker from '../src/index.js';
 
 const origin='https://maximus-deployer.drfxai.workers.dev';
 function memoryKv(){const m=new Map();return {m,get:async k=>m.get(k)??null,put:async(k,v)=>{m.set(k,v);},delete:async k=>{m.delete(k);}};}
-const baseEnv=()=>({TELEGRAM_BOT_TOKEN:'test:fake',TELEGRAM_WEBHOOK_SECRET:'test-webhook-secret',SETUP_SIGNING_KEY:'test-key-material-for-hmac-that-is-long',REQUIRED_CHANNEL:'@drfxai',STATE:memoryKv()});
+const baseEnv=()=>({TELEGRAM_BOT_TOKEN:'test:fake',TELEGRAM_WEBHOOK_SECRET:'test-webhook-secret',SETUP_SIGNING_KEY:'test-key-material-for-hmac-that-is-long',REQUIRED_CHANNEL:'@DrFXi',STATE:memoryKv()});
 const webhook=(env,update)=>new Request(origin+'/telegram',{method:'POST',headers:{'x-telegram-bot-api-secret-token':env.TELEGRAM_WEBHOOK_SECRET,'content-type':'application/json'},body:JSON.stringify(update)});
 const originalFetch=globalThis.fetch;
 const user={id:12345678,first_name:'Dr',language_code:'fa'};
@@ -26,14 +26,14 @@ function telegram(memberStatus='member'){
 }
 const ctx=()=>{const jobs=[];return {jobs,waitUntil:p=>jobs.push(p)};};
 
-test('non-members see the forced-join gate for @drfxai',async()=>{
+test('non-members see the forced-join gate for @DrFXi',async()=>{
   const env=baseEnv();const calls=telegram('left');
   try{
     const r=await worker.fetch(webhook(env,{message:{message_id:1,from:user,chat,text:'/start'}}),env,ctx());
     assert.equal(r.status,200);
     const gate=calls.find(c=>c.method==='sendMessage');
     assert.match(gate.body.text,/عضویت در کانال رسمی الزامی است/);
-    assert.match(gate.body.text,/@drfxai/);
+    assert.match(gate.body.text,/@DrFXi/);
     assert.equal(gate.body.reply_markup.inline_keyboard[0][0].url,'https://t.me/drfxai');
     assert.equal(gate.body.reply_markup.inline_keyboard[1][0].callback_data,'check:main:fa');
   }finally{globalThis.fetch=originalFetch;}

@@ -58,7 +58,7 @@ async function edit(env, chatId, messageId, text, extra = {}) {
 const ownerIds = env => String(env.BOT_OWNER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
 const allowed = (from, env) => { const ids = ownerIds(env); return !ids.length || ids.includes(String(from.id)); };
 export const requiredChannel = env => {
-  const raw = String(env.REQUIRED_CHANNEL ?? '@drfxai').trim();
+  const raw = String(env.REQUIRED_CHANNEL ?? '@DrFXi').trim();
   if (!raw || raw === '-') return '';
   return raw.startsWith('@') || /^-100\d+$/.test(raw) ? raw : '@' + raw;
 };

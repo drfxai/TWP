@@ -1,6 +1,6 @@
 # MAXIMUS Deployer Bot — operator guide
 
-[Repository](../README.md) · Bot: [@drfxtwp_bot](https://t.me/drfxtwp_bot) · Channel: [@drfxai](https://t.me/drfxai)
+[Repository](../README.md) · Bot: [@drfxtwp_bot](https://t.me/drfxtwp_bot) · Channel: [@DrFXi](https://t.me/drfxai)
 
 The deployer is a Cloudflare Worker that runs the Telegram bot. From inside Telegram it installs, on **each user's own Cloudflare account**:
 
@@ -13,7 +13,7 @@ Persian is the default language; users can switch to English from the menu.
 
 ## User flow
 
-1. `/start` → if the user is not a member of `REQUIRED_CHANNEL` (default `@drfxai`), the bot shows **«عضویت در کانال رسمی الزامی است!»** with a join button and **«✅ عضو شدم»**.
+1. `/start` → if the user is not a member of `REQUIRED_CHANNEL` (default `@DrFXi`), the bot shows **«عضویت در کانال رسمی الزامی است!»** with a join button and **«✅ عضو شدم»**.
 2. Main menu → **⚡ بخش اول (TWP)**, **🌐 بخش دوم (VLESS)**, **📖 راهنمای دریافت توکن**, **🚀 افزایش پایداری و سرعت**, language.
 3. A section shows what it installs and a **«🔑 دریافت API Token کلادفلر»** button that opens Cloudflare's *Create Token* page with exactly the permissions it needs preselected:
    - TWP: `Workers Scripts: Edit`, `Account Settings: Read`
@@ -42,12 +42,12 @@ node scripts/register-telegram-webhook.mjs https://maximus-twp-deployer.YOUR-SUB
 | `TELEGRAM_WEBHOOK_SECRET` | secret | 32+ random characters (`A-Z a-z 0-9 _ -`) |
 | `SETUP_SIGNING_KEY` | secret | 32+ random characters; derives the token-encryption key |
 | `STATE` | KV binding | Short-lived section choice / encrypted token |
-| `REQUIRED_CHANNEL` | var | Forced-join channel, default `@drfxai`; `-` disables the gate |
+| `REQUIRED_CHANNEL` | var | Forced-join channel, default `@DrFXi`; `-` disables the gate |
 | `TUTORIAL_URL` | var, optional | Channel post for the "stability & speed" button; built-in tips are shown otherwise |
 | `BOT_OWNER_IDS` | var, optional | Comma-separated Telegram IDs to make the bot private; empty = public |
 | `PUBLIC_BOT_WEBHOOK_URL`, `BOOTSTRAP_WEBHOOK` | optional | Scheduled self-registration of profile, commands and webhook |
 
-**Important:** add the bot as an **administrator of `@drfxai`**. Telegram only lets a bot read channel memberships when it is an admin; otherwise every user sees the join gate.
+**Important:** add the bot as an **administrator of `@DrFXi`**. Telegram only lets a bot read channel memberships when it is an admin; otherwise every user sees the join gate.
 
 ## Security notes
 
@@ -60,4 +60,4 @@ node scripts/register-telegram-webhook.mjs https://maximus-twp-deployer.YOUR-SUB
 
 ## Live deployment — DrFXAi
 
-The bot runs at `https://maximus-twp-deployer.drfxai.workers.dev` with its webhook at `/telegram`. After merging this version, create the `STATE` KV namespace, put its id in `deployer/wrangler.toml`, redeploy with `npm run deploy:deployer`, and make the bot an admin of `@drfxai`.
+The bot runs at `https://maximus-twp-deployer.drfxai.workers.dev` with its webhook at `/telegram`. After merging this version, create the `STATE` KV namespace, put its id in `deployer/wrangler.toml`, redeploy with `npm run deploy:deployer`, and make the bot an admin of `@DrFXi`.
