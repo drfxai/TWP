@@ -1,12 +1,25 @@
 name = "maximus-twp-deployer"
 main = "dist/index.mjs"
-compatibility_date = "2026-09-01"
+compatibility_date = "2024-09-23"
 workers_dev = true
 
-# Required secrets (use wrangler secret put --config deployer/wrangler.toml):
+# Short-lived bot state: the chosen section (10 min) and, when a token arrives
+# before a section is chosen, the AES-GCM encrypted token (5 min, deleted on use).
+# Create it with: npx wrangler kv namespace create STATE --config deployer/wrangler.toml
+[[kv_namespaces]]
+binding = "STATE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+REQUIRED_CHANNEL = "@drfxai"   # the bot must be an administrator of this channel; "-" disables the gate
+# TUTORIAL_URL = "https://t.me/drfxai/123"   # optional post for the "stability & speed" button
+# BOT_OWNER_IDS = "123456789"                # optional: restrict the bot to these Telegram user IDs
+
+# Required secrets (npx wrangler secret put <NAME> --config deployer/wrangler.toml):
 # TELEGRAM_BOT_TOKEN
 # TELEGRAM_WEBHOOK_SECRET
-# SETUP_SIGNING_KEY
-# BOT_OWNER_IDS (comma-separated numeric Telegram user IDs)
+# SETUP_SIGNING_KEY   (random 32+ characters; also derives the token encryption key)
+# PUBLIC_BOT_WEBHOOK_URL (https://maximus-twp-deployer.<subdomain>.workers.dev/telegram)
+
 [observability]
 enabled = false

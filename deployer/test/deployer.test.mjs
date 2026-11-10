@@ -1,48 +1,80 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {deployWorker,validateTarget} from '../src/deploy.js';
-import {escapeHtml,setupPage,resultPage} from '../src/ui.js';
+import {deployTwp,deployVless,resolveAccount,validateToken,randomName} from '../src/deploy.js';
+import {tokenLink,bar,M} from '../src/messages.js';
 
-const params={accountId:'0123456789abcdef0123456789abcdef',subdomain:'myteam',workerName:'maximus-twp-test',apiToken:'a'.repeat(40)};
+const token='A'.repeat(40);
+const ACC='0123456789abcdef0123456789abcdef';
+const bundle='export default {fetch() {return new Response("ok")}}; // '.repeat(10);
+const okJson=result=>({ok:true,status:200,json:async()=>({success:true,result})});
 
-test('validates explicit limited target identifiers',()=>{
-  assert.doesNotThrow(()=>validateTarget(params));
-  assert.throws(()=>validateTarget({...params,accountId:'oops'}));
-  assert.throws(()=>validateTarget({...params,workerName:'other-app'}));
-  assert.throws(()=>validateTarget({...params,subdomain:'wrong.example.com'}));
+function fakeCloudflare({subdomain='myteam'}={}){
+  const calls=[];
+  const fetcher=async(url,opts={})=>{
+    calls.push({url,method:opts.method||'GET',opts});
+    if(url.endsWith('/accounts?per_page=5'))return okJson([{id:ACC,name:'Me'}]);
+    if(url.endsWith('/workers/subdomain')&&(opts.method||'GET')==='GET')return subdomain?okJson({subdomain}):{ok:false,status:404,json:async()=>({success:false})};
+    if(url.endsWith('/workers/subdomain')&&opts.method==='PUT')return okJson({subdomain:JSON.parse(opts.body).subdomain});
+    if(url.endsWith('/storage/kv/namespaces'))return okJson({id:'f'.repeat(32),title:JSON.parse(opts.body).title});
+    return okJson({});
+  };
+  return {calls,fetcher};
+}
+
+test('validates Cloudflare API token shape',()=>{
+  assert.doesNotThrow(()=>validateToken(token));
+  assert.throws(()=>validateToken('short'));
+  assert.throws(()=>validateToken('123456789:'+'a'.repeat(35)));
 });
 
-test('escapes potentially hostile UI fields',()=>{
-  assert.equal(escapeHtml('<script>alert(1)</script>'),'&lt;script&gt;alert(1)&lt;/script&gt;');
-  const html=setupPage({lang:'en',ticket:'test',sig:'sig'});
-  assert.match(html,/Deploy your private Telegram WEB proxy/);
-  assert.doesNotMatch(html,/external-deployer-brand/i);
+test('random worker names are lowercase and start with a letter',()=>{
+  for(let i=0;i<50;i++)assert.match(randomName(10),/^[a-z][a-z0-9]{9}$/);
 });
 
-test('Persian setup and result pages render',()=>{
-  assert.match(setupPage({lang:'fa',ticket:'a',sig:'b'}),/lang="fa"/);
-  assert.match(resultPage({lang:'fa',result:{adminToken:'redacted',dashboard:'https://example.workers.dev',deepLink:'tg://webproxy',webLink:'https://t.me/webproxy'}}),/کلید مدیریت/);
+test('resolves account and creates a workers.dev subdomain when missing',async()=>{
+  const {calls,fetcher}=fakeCloudflare({subdomain:''});
+  const r=await resolveAccount({apiToken:token,fetcher});
+  assert.equal(r.accountId,ACC);
+  assert.match(r.subdomain,/^mx-[a-z0-9]+$/);
+  assert.ok(calls.some(c=>c.method==='PUT'&&c.url.endsWith('/workers/subdomain')));
 });
 
-test('uploads a module worker with random secrets, enables only the selected workers.dev script',async()=>{
-  const requests=[];
-  const fetcher=async(url,opts)=>{requests.push({url,opts});return {ok:true,status:200,json:async()=>({success:true,result:{}})};};
-  const out=await deployWorker({...params,coreSource:'export default {fetch() {return new Response("ok")}}; // '.repeat(10),fetcher});
-  assert.equal(requests.length,2);
-  assert.match(requests[0].url,/workers\/scripts\/maximus-twp-test$/);
-  assert.equal(requests[0].opts.method,'PUT');
-  const metadata=JSON.parse(requests[0].opts.body.get('metadata'));
-  assert.equal(metadata.main_module,'maximus-core.mjs');
-  assert.equal(metadata.bindings.find(b=>b.name==='PROXY_SECRET').text.length,32);
-  assert.equal(metadata.bindings.find(b=>b.name==='ADMIN_TOKEN').text.length,64);
-  assert.equal(metadata.bindings.filter(b=>b.type==='secret_text').length,2);
-  assert.match(requests[1].url,/subdomain$/);
-  assert.equal(requests[1].opts.method,'POST');
-  assert.match(out.deepLink,/tg:\/\/webproxy/);
-  assert.equal(out.host,'maximus-twp-test.myteam.workers.dev');
+test('TWP deploy uploads a random worker with a random PROXY_SECRET and reports progress',async()=>{
+  const {calls,fetcher}=fakeCloudflare();
+  const steps=[];
+  const r=await deployTwp({apiToken:token,coreSource:bundle,fetcher,onProgress:async p=>steps.push(p)});
+  const upload=calls.find(c=>c.method==='PUT'&&/workers\/scripts\/[a-z0-9]+$/.test(c.url));
+  const meta=JSON.parse(upload.opts.body.get('metadata'));
+  assert.equal(meta.bindings.find(b=>b.name==='PROXY_SECRET').text.length,32);
+  assert.deepEqual(meta.compatibility_flags,['nodejs_compat','no_websocket_standard_binary_type']);
+  assert.match(r.deepLink,/^tg:\/\/webproxy\?server=[a-z0-9]+\.myteam\.workers\.dev&secret=[0-9a-f]{32}$/);
+  assert.match(r.webLink,/^https:\/\/t\.me\/webproxy\?/);
+  assert.deepEqual(steps,[15,45,85]);
 });
 
-test('never returns raw provider errors with token in response',async()=>{
-  const fetcher=async()=>({ok:false,status:403,json:async()=>({success:false,errors:[{message:params.apiToken}]})});
-  await assert.rejects(deployWorker({...params,coreSource:'export default {fetch() {return new Response("ok")}}; // '.repeat(10),fetcher}),e=>!e.message.includes(params.apiToken));
+test('VLESS deploy creates KV, binds UUID and ADMIN_PASSWORD, returns panel and config',async()=>{
+  const {calls,fetcher}=fakeCloudflare();
+  const r=await deployVless({apiToken:token,vlessSource:bundle,fetcher});
+  assert.ok(calls.some(c=>c.url.endsWith('/storage/kv/namespaces')));
+  const upload=calls.find(c=>c.method==='PUT'&&/workers\/scripts\/[a-z0-9]+$/.test(c.url));
+  const meta=JSON.parse(upload.opts.body.get('metadata'));
+  assert.equal(meta.bindings.find(b=>b.type==='kv_namespace').name,'KV');
+  assert.equal(meta.bindings.find(b=>b.name==='UUID').text,r.uuid);
+  assert.equal(meta.bindings.find(b=>b.name==='ADMIN_PASSWORD').text,r.password);
+  assert.match(r.vlessLink,/^vless:\/\/[0-9a-f-]{36}@[a-z0-9]+\.myteam\.workers\.dev:443\?encryption=none&security=tls/);
+  assert.match(r.panel,/\/admin$/);
+});
+
+test('never returns raw provider errors that may contain the token',async()=>{
+  const fetcher=async()=>({ok:false,status:403,json:async()=>({success:false,errors:[{message:token}]})});
+  await assert.rejects(deployTwp({apiToken:token,coreSource:bundle,fetcher}),e=>!e.message.includes(token));
+});
+
+test('prefilled token link carries only the needed permissions',()=>{
+  const twp=decodeURIComponent(tokenLink('twp'));
+  assert.match(twp,/workers_scripts/);
+  assert.doesNotMatch(twp,/workers_kv_storage/);
+  assert.match(decodeURIComponent(tokenLink('vless')),/workers_kv_storage/);
+  assert.equal(bar(85),'⚡ [█████████░] 85%');
+  assert.ok(M.fa.sectionTwp.includes('PROXY_SECRET'));
 });

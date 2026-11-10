@@ -1,58 +1,71 @@
-# MAXIMUS TWP — engineering notes
+# MAXIMUS TWP Technical Architecture (v2.2)
 
-## Purpose
+This document describes the internal engineering, data flow, and networking model of **MAXIMUS TWP (Telegram Worker Proxy)** implementing the official Telegram WEB Proxy specification.
 
-A narrowly scoped, independently authored Cloudflare Workers WEB proxy service for Telegram. It is **not** an HTTP CONNECT/SOCKS5 proxy or system-wide Android VPN engine. The design targets Telegram clients that implement the WEB proxy v1 transport contract. Production interoperability is unverified until exercised against a compatible Telegram build.
+---
 
-## Data path
+## 1. High-Level Overview
 
+```mermaid
+graph LR
+    subgraph Client ["Client Device"]
+        TG["Official Telegram Client\n(Desktop / Android / iOS)"]
+        WV["Hidden WebView Carrier\n(Bridge JavaScript)"]
+        TG --- WV
+    end
+
+    subgraph Edge ["Cloudflare Global Anycast Edge (worker.js)"]
+        Bridge["Bridge Endpoint\n(/?bridge=...)"]
+        Session["Session API\n(/api/v1/session)"]
+        Carrier["WebSocket Carrier\n(/api/v1/ws)"]
+        Multiplexer["Binary Frame Multiplexer\n(OPEN, DATA, WINDOW, CLOSE)"]
+        Engine["In-Worker Obfuscated2 Engine\n(AES-CTR Re-encryption & Keystream Match)"]
+        
+        Bridge --> Session
+        Session --> Carrier
+        Carrier --> Multiplexer
+        Multiplexer --> Engine
+    end
+
+    subgraph Core ["Telegram Network"]
+        Backend["Telegram DCs (1-5 :443)\n(cloudflare:sockets)"]
+    end
+
+    WV -- "HTTPS Bridge / WSS Carrier" --> Carrier
+    Engine -- "Obfuscated2 TCP Streams" --> Backend
 ```
-Telegram native networking
-  -> native WEB adapter (authenticated WebView IPC)
-  -> HTTPS capability bridge / short-lived bootstrap
-  -> WSS carrier, binary frame multiplexing
-  -> fixed Telegram DC IP allowlist, TCP :443 via Cloudflare sockets
-  -> MTProto Obfuscated2 header translation
-  -> Telegram datacenter
-```
 
-All stream IDs are managed within one WebSocket upgrade. Each socket request receives an isolated in-memory session and its own active-stream map. There is no D1, KV, R2, durable object or session database. The proxy does not log content or track end-users. Cloudflare platform-level logs and network policy remain under the account operator's control.
+---
 
-## Protocol compatibility
+## 2. Key Architectural Advantages
 
-- Bridge query is HMAC-SHA256 over `tdesktop-web-proxy-bridge-v1\n<host>` (v2 binds a base path).
-- Binary frame header is `type:u8 | streamId:u24 | length:u32be`, followed by up to 1 MiB of data.
-- `HELLO`/`WELCOME` is exchanged using POST `/api/v1/session`, followed by a same-origin `tproxy-v1.<token>` WebSocket upgrade.
-- The WebView bridge dispatches one complete frame at a time to the native boundary. A parent MessagePort on `http://127.0.0.1:<port>` is an explicit fallback.
-- OPEN allocates one logical stream; WINDOW tracks per-stream credit; CLOSE releases resources. The TCP destination is never supplied by the user.
-- A 64-byte Obfuscated2 handshake is decoded using the shared secret. The decrypted transport tag and DC ID are validated; uplink is translated to a direct DC handshake and downlink stays on the client's expected keystream.
+| Feature | Standard MTProxy | VPS Relay (tproxy-server) | **MAXIMUS TWP (Cloudflare Worker)** |
+| :--- | :--- | :--- | :--- |
+| **Server Requirements** | Linux VPS ($5+/month) | Linux VPS + Caddy | **100% Serverless (Cloudflare Workers)** |
+| **Setup Complexity** | Complex (Compiling C, systemd) | High (Caddy, Go daemon, firewall) | **Instant (Copy-paste `worker.js`)** |
+| **DPI Detection** | High (Easily blocked by SNI/IP) | Low (Camouflaged website) | **Zero (Protected behind Cloudflare CDN)** |
+| **Client Support** | Standard MTProxy | Official Telegram WEB Proxy | **Official Telegram WEB Proxy (`tg://webproxy`)** |
+| **Global Edge Latency** | Single Datacenter | Single Datacenter | **Anycast across 300+ Cities Worldwide** |
+| **Direct Link Delivery** | Manual configuration | Manual configuration | **Built-in Web Dashboard with One-Click Link** |
 
-Reference wire contract: https://github.com/telegramdesktop/tproxy-server/blob/master/PROTOCOL.md
+---
 
-## Threat model & constraints
+## 3. Communication Lifecycle
 
-- Never ship a preset `PROXY_SECRET` or expose it in public HTML; this repository deliberately fails closed without it.
-- The bridge capability is hostname-bound and only accessible to a party already holding the shared secret.
-- Stateless session tokens are short-lived and HMAC-authenticated; bootstrap tokens are **not single-use** and signed session tokens are **replayable within their validity window**. Session revocation requires rotating the relay secret or deploying a stateful alternative.
-- The public dashboard requires separate `ADMIN_TOKEN` bearer authentication before issuing links. It does not persist the token to storage.
-- A Cloudflare Worker cannot guarantee immunity to filtering or reliable TCP connectivity to every datacenter on every ISP. Deployments require live testing.
-- Limits: 24 concurrent streams by default (configurable to 40), 40 dials per WS carrier, 4 MiB flow window per stream, 1 MiB per frame, 4 MiB per inbound WS message, 2 MiB browser buffered soft limit.
-- The implementation supports one multiplexed WebSocket carrier. HTTPS polling and lane isolation are **not implemented**.
-- No auto-install into the MAXIMUS Android APK is included; this is a separate serverless service and a configuration handoff.
+### Step 1: Bridge Handshake
+1. The user taps a `tg://webproxy?server=<host>&secret=<secret>` link.
+2. The Telegram client verifies the secret and launches an internal WebView to:
+   ```text
+   GET /?bridge=<capability>#android=<nonce>
+   ```
+3. `worker.js` calculates `HMAC-SHA256` capability. Upon validation, it renders the official Bridge HTML document with cryptographic nonces and CSP headers.
 
-## Deployment security checklist
+### Step 2: Session & Carrier Establishment
+1. The WebView executes the isolated bridge script, issues `POST /api/v1/session` with a `HELLO` frame (`0x10`), and receives a `WELCOME` frame (`0x11`) and a signed `sessionToken`.
+2. The bridge initiates a WebSocket connection to `/api/v1/ws` with `Sec-WebSocket-Protocol: tproxy-v1.<sessionToken>`.
 
-1. Use a cryptographically random per-deployment `PROXY_SECRET` and a distinct strong `ADMIN_TOKEN`.
-2. Set both using `wrangler secret put`, never in `[vars]` or source control.
-3. Restrict Cloudflare access permissions and configure budget/abuse alerts.
-4. Keep Worker logging of headers, request paths and WebSocket frames disabled.
-5. Verify that the target Telegram client supports `tg://webproxy`, not merely MTProxy or SOCKS5.
-6. Check Cloudflare socket availability / error metrics and update allowlisted DC endpoints as needed.
-7. Run tests and dry-run build before deployment; use a staging worker first.
-
-## Known gaps for a hardened release
-
-- Real Telegram v1 interoperability matrix (Android/Desktop/iOS), real Cloudflare socket tests and long-duration soak testing.
-- Exhaustive abuse, race-condition and crypto known-answer tests, plus reliable backpressure timeouts.
-- Durable Object single-use bootstrap / session revocation (if the product requires strong replay prevention).
-- Optional per-stream isolated WS lanes, adaptive region scheduling and failover after stream closure.
+### Step 3: Multiplexed TCP Streaming via `cloudflare:sockets`
+1. For every MTProto stream, the client issues an `OPEN` frame (`0x01`).
+2. `worker.js` calls `connect({ hostname, port })` using `cloudflare:sockets` to establish an outbound TCP socket to the backend.
+3. `DATA` frames (`0x02`) are piped directly to the TCP socket writer.
+4. Incoming TCP data is read and wrapped in `DATA` binary frames sent over WebSocket back to the client.

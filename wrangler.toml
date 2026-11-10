@@ -1,13 +1,9 @@
 name = "maximus-twp"
-main = "src/worker.js"
-compatibility_date = "2026-09-01"
-workers_dev = true
+main = "worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat", "no_websocket_standard_binary_type"]
 
-# Set production secrets via `npx wrangler secret put PROXY_SECRET` and
-# `npx wrangler secret put ADMIN_TOKEN`. Never commit them to source control.
-[vars]
-MAX_STREAMS = "24"
-# BASE_PATH = "private-proxy-path"
-
-[observability]
-enabled = false
+# Optional environment variables
+# [vars]
+# PROXY_SECRET = "000102030405060708090a0b0c0d0e0f"  # 16-byte hex secret (or dd + 32 hex for random padding)
+# MAX_DIALS = "45"                                  # Max connections per socket lane
