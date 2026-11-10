@@ -335,6 +335,12 @@ export default {
     ctx.waitUntil(configureTelegram(env));
   },
   async fetch(request, env, ctx) {
+    try { return await route(request, env, ctx); }
+    catch (error) { console.log('MAXIMUS Deployer error:', error && error.stack || error); return errorResponse('Internal error: ' + (error && error.message || 'unknown'), 500); }
+  },
+};
+
+async function route(request, env, ctx) {
     const url = new URL(request.url);
     const context = ctx || {waitUntil: p => p};
     if (url.pathname === '/health' && request.method === 'GET') {
@@ -342,5 +348,4 @@ export default {
     }
     if (url.pathname === '/telegram' && request.method === 'POST') return telegramWebhook(request, env, context);
     return errorResponse('Not found', 404);
-  },
-};
+}
