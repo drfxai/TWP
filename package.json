@@ -8,11 +8,12 @@
     "dev": "wrangler dev --port 3000 --ip 0.0.0.0",
     "build": "wrangler deploy --dry-run --outdir=dist",
     "lint": "node --check worker.js && wrangler deploy --dry-run --outdir=dist",
-    "test": "node --import ./test/cf-loader.mjs --test test/worker.test.mjs && npm run build:deployer && node --test deployer/test/*.test.mjs",
+    "test": "node --import ./test/cf-loader.mjs --test test/worker.test.mjs test/vless.test.mjs test/vless-relay.test.mjs && npm run build:deployer && node --test deployer/test/*.test.mjs",
     "deploy": "wrangler deploy",
-    "check": "node --check worker.js && node --check deployer/src/deploy.js && node --check deployer/src/ui.js && node --check deployer/src/index.js && npm test",
+    "check": "node --check worker.js && node --check vless/worker.js && node --check deployer/src/deploy.js && node --check deployer/src/messages.js && node --check deployer/src/index.js && npm test",
     "build:deployer": "node scripts/build-deployer.mjs",
-    "deploy:deployer": "npm run build:deployer && wrangler deploy --config deployer/wrangler.toml"
+    "deploy:deployer": "npm run build:deployer && wrangler deploy --config deployer/wrangler.toml",
+    "deploy:vless": "wrangler deploy vless/worker.js --name maximus-vless --compatibility-date 2024-09-23 --compatibility-flags nodejs_compat"
   },
   "keywords": [
     "telegram",

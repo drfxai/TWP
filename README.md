@@ -39,6 +39,8 @@
 - **پشتیبانی نیتیو در کلاینت‌های تلگرام:** بدون نیاز به کامپایل کد اختصاصی یا کلاینت غیررسمی؛ تلگرام‌های رسمی مجهز به وب‌پروکسی مستقیماً به آن متصل می‌شوند.
 - **ضد فیلترینگ و استتار کامل (DPI-Immune):** ترافیک در قالب HTTPS استاندارد روی پورت ۴۴۳ و وب‌سوکت معتبر به شبکه جهانی کلادفلر ارسال می‌شود.
 - **مالتی‌پلکسینگ استاندارد فریم‌ها:** فریم‌های `OPEN`, `DATA`, `WINDOW`, `CLOSE` مستقیماً به سوکت‌های استریمینگ `cloudflare:sockets` تبدیل می‌شوند.
+- **سرور و پنل اختصاصی VLESS:** نصب خودکار سرور VLESS روی WebSocket با پنل مدیریت رمزدار، دیتابیس KV، لینک اشتراک و تنظیم آی‌پی تمیز ([`vless/worker.js`](vless/worker.js)).
+- **ربات دیپلویر تلگرام [@drfxtwp_bot](https://t.me/drfxtwp_bot):** عضویت اجباری کانال، لینک آماده‌ی ساخت توکن، نوار پیشرفت و تحویل لینک‌ها داخل تلگرام ([`deployer/`](deployer)).
 - **استتار در قالب سایت عادی (Camouflage Mode):** امکان تعریف دامنه فیک (`CAMOUFLAGE_URL`) تا اسکنرهای اینترنتی فاقد سکرت تنها یک سایت معمولی را مشاهده کنند.
 
 ---
@@ -102,13 +104,13 @@ sequenceDiagram
 ساده‌ترین و سریع‌ترین روش برای راه‌اندازی و استقرار خودکار TWP بدون نیاز به کامپیوتر یا دانش فنی، استفاده از ربات تلگرام دیپلویر است:
 
 
-1️⃣ وارد ربات دیپلویر بشید: [@drfxtwp_bot](https://t.me/drfxtwp_bot)  
+1️⃣ وارد ربات دیپلویر بشید: [@drfxtwp_bot](https://t.me/drfxtwp_bot) و در کانال [@drfxai](https://t.me/drfxai) عضو شوید.  
 2️⃣ اول مطمئن شید که یه حساب کاربری توی سایت [dash.cloudflare.com](https://dash.cloudflare.com) دارید.  
-3️⃣ در کلادفلر یک توکن API محدود با دسترسی **Workers Scripts: Edit** فقط برای حساب خودتان بسازید.  
-4️⃣ در ربات `/deploy` را بفرستید یا روی دکمه‌ی **Deploy** بزنید.  
-5️⃣ لینک امن نصب (HTTPS) باز می‌شود؛ Account ID، زیردامنه‌ی workers.dev، نام ورکر و توکن را وارد کنید.  
-6️⃣ دکمه‌ی **نصب MAXIMUS TWP** را بزنید تا ورکر نصب و لینک اتصال تلگرام تحویل داده شود! ✨  
-7️⃣ توکن را هرگز در چت تلگرام نفرستید و پس از نصب آن را باطل کنید.
+3️⃣ بخش مورد نظر را انتخاب کنید: **⚡ وب‌پروکسی تلگرام (TWP)** یا **🌐 سرور و پنل VLESS**.  
+4️⃣ روی دکمه «🔑 دریافت API Token کلادفلر» کلیک کنید؛ دسترسی‌ها از قبل انتخاب شده‌اند.  
+5️⃣ در صفحه‌ای که باز میشه اسکرول کنید پایین، روی **Continue to summary** و بعد **Create Token** بزنید.  
+6️⃣ توکن نمایش داده شده رو کپی کنید و برای ربات ارسال کنید! ✨ (پیام توکن فوراً از چت پاک می‌شود)  
+7️⃣ لینک اتصال `tg://webproxy` یا کانفیگ VLESS، لینک اشتراک و رمز پنل تحویل داده می‌شود.
 
 ---
 
@@ -159,7 +161,9 @@ npx wrangler deploy
 | **Protocol Specification** | [`docs/PROTOCOL.md`](docs/PROTOCOL.md) | قرارداد دقیق فریم‌های باینری، هدرهای کنترلی، و فرمول‌های محاسباتی HMAC-SHA256 |
 | **Architecture Specification** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | بررسی مدل فنی، مزایای رقابتی در مقایسه با MTProxy و SOCKS5، و امنیت لایه انتقال |
 | **Deployment Guide** | [`docs/DEPLOY_CLOUDFLARE.md`](docs/DEPLOY_CLOUDFLARE.md) | راهنمای گام‌به‌گام استقرار روی کلادفلر در کمتر از ۱ دقیقه |
-| **Test Suite** | [`test/worker.test.mjs`](test/worker.test.mjs) | مجموعه آزمون‌های خودکار واحد و انتها-به-انتها با شبیه‌ساز سوکت |
+| **VLESS Server & Panel** | [`vless/worker.js`](vless/worker.js) | سرور VLESS روی WebSocket، پنل مدیریت، لینک اشتراک و تنظیمات KV |
+| **Telegram Deployer Bot** | [`deployer/`](deployer) · [`docs/BOT_DEPLOYER.md`](docs/BOT_DEPLOYER.md) | ربات @drfxtwp_bot برای نصب خودکار TWP و VLESS |
+| **Test Suite** | [`test/`](test) · [`deployer/test/`](deployer/test) | مجموعه آزمون‌های خودکار واحد و انتها-به-انتها با شبیه‌ساز سوکت |
 
 ---
 
@@ -175,19 +179,21 @@ Telegram's official WEB proxy routes MTProto traffic through an app-owned intern
 - **Direct Telegram Link Delivery:** Generates and presents `tg://webproxy?server=...&secret=...` and `https://t.me/webproxy` with one-click connect and responsive QR codes.
 - **Native Client Support:** Works out of the box with official Telegram clients that support WEB proxies (Telegram Desktop, Android, iOS).
 - **Censorship & DPI Resistance:** Pure TLS 1.3 HTTPS and RFC 6455 WebSockets over standard Port 443 with Cloudflare Anycast CDN routing.
+- **VLESS Server & Panel:** one-tap VLESS-over-WebSocket worker with a password-protected panel, KV settings, subscription link and clean-IP support ([`vless/worker.js`](vless/worker.js)).
+- **Telegram Deployer Bot:** [@drfxtwp_bot](https://t.me/drfxtwp_bot) with forced channel join, prefilled token link, live progress and in-chat delivery ([`deployer/`](deployer)).
 - **Binary Frame Multiplexing:** Full implementation of Telegram's 8-byte header frame multiplexer (`OPEN`, `DATA`, `WINDOW`, `CLOSE`, `PING`, `PONG`).
 
 ### ⚡ 1-Click Quick Deploy via Telegram Bot (Recommended)
 
 The easiest and fastest way to deploy TWP in under 1 minute without needing any coding or server setup:
 
-1️⃣ Open the deployer bot: [@drfxtwp_bot](https://t.me/drfxtwp_bot)  
+1️⃣ Open the deployer bot: [@drfxtwp_bot](https://t.me/drfxtwp_bot) and join [@drfxai](https://t.me/drfxai).  
 2️⃣ Ensure you have an active account on [dash.cloudflare.com](https://dash.cloudflare.com).  
-3️⃣ Create a scoped Cloudflare API token with **Workers Scripts: Edit** for your own account only.  
-4️⃣ Send `/deploy` to the bot (or tap **Deploy**).  
-5️⃣ Open the secure HTTPS setup link and enter your Account ID, workers.dev subdomain, Worker name and token.  
-6️⃣ Tap **Deploy MAXIMUS TWP**: your Worker is installed and the Telegram link is delivered! ✨  
-7️⃣ Never paste a token into Telegram chat, and revoke it after setup.
+3️⃣ Choose a section: **⚡ Telegram WEB proxy (TWP)** or **🌐 VLESS server & panel**.  
+4️⃣ Tap **«🔑 Get Cloudflare API Token»**: the needed permissions are preselected.  
+5️⃣ Scroll down, tap **Continue to summary**, then **Create Token**.  
+6️⃣ Copy the token and send it to the bot! ✨ (the message is deleted from the chat at once)  
+7️⃣ You receive the `tg://webproxy` link, or the VLESS config, subscription link and panel password.
 
 ### Alternative Deploy (Wrangler CLI)
 ```bash
